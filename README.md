@@ -4,6 +4,8 @@ Tiny pixel-art companions that live on your Windows desktop. They wander
 across your screens, climb between monitors, chat and play with each other,
 and get out of the way when you go fullscreen.
 
+![Roxy](characters/roxy/preview.png)
+
 ## Important Note
 
 The project is entirely vibe coded by Claude. 
@@ -12,9 +14,6 @@ Please do not use this project to judge my programming skills.
 All I wrote are the prompts. 
 I mostly just specify the structure of the code (to maintain modularity of the characters).
 And the relationship between the characters (my head cannon).
-
-![Roxy](characters/roxy/preview.png)
-
 ## Running it
 
 You need **Windows** and **Python 3** (the standard install from python.org
