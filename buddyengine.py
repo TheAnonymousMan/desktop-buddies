@@ -495,7 +495,7 @@ class Buddy:
         self.gfx = self.app.graphics(self.kind, s)
         self.sw, self.sh = self.spr_w * s, self.spr_h * s
         self.padx = max(12 * s, (int(260 * f) - self.sw) // 2)   # room for long bubbles
-        self.padtop = int(self.ch.get("bubble_room", 64) * f)
+        self.padtop = int((self.ch.get("bubble_room", 64) + 28) * f)   # + room for the round bubble
         self.padbot = int(10 * f)
         self.W = self.sw + 2 * self.padx
         self.H = self.padtop + self.sh + self.padbot
@@ -1156,6 +1156,41 @@ class Buddy:
             return "blink"
         return "stand_b" if (t // 6) % 6 == 1 else "stand"
 
+    def draw_bubble(self, c, text, hx, hy):
+        """A round speech bubble (a pill for one line) with a curvy tail
+        pointing at the head, and a soft shadow underneath."""
+        ink, paper, shadow = "#2b1d14", "#ffffff", "#cfc6da"
+        tid = c.create_text(hx, hy - 22, text=text, fill=ink, anchor="s",
+                            width=self.W - 40, justify="center", font=("Segoe UI", 9, "bold"))
+        x0, y0, x1, y1 = c.bbox(tid)
+        shift = max(20 - x0, 0) + min(self.W - 20 - x1, 0)    # keep it inside the window
+        c.move(tid, shift, 0)
+        bx0, by0, bx1, by1 = x0 + shift - 14, y0 - 7, x1 + shift + 14, y1 + 6
+        r = min(24, (by1 - by0) / 2, (bx1 - bx0) / 2)        # big round ends
+        tx = max(bx0 + r + 6, min(bx1 - r - 6, hx - 4))       # where the tail leaves the bubble
+        lean = 6 if hx >= tx else -6                          # tail curls toward the head
+
+        def body(dx=0, dy=0):
+            pts = []
+            for cx, cy, a0 in ((bx1 - r, by0 + r, -90), (bx1 - r, by1 - r, 0),
+                               (bx0 + r, by1 - r, 90), (bx0 + r, by0 + r, 180)):
+                for k in range(7):                            # a quarter circle per corner
+                    ang = math.radians(a0 + k * 15)
+                    pts += [cx + r * math.cos(ang) + dx, cy + r * math.sin(ang) + dy]
+            return pts
+
+        def tail(dx=0, dy=0):
+            pts = [tx - 9, by1 - 3, tx - 4, by1 + 6, tx + lean, hy - 5,       # a comic-style curl
+                   tx + 1, by1 + 7, tx + 7, by1 - 3]
+            return [v + (dx if i % 2 == 0 else dy) for i, v in enumerate(pts)]
+
+        c.create_polygon(body(2, 3), fill=shadow, outline="")                   # soft shadow
+        c.create_polygon(tail(2, 3), smooth=True, fill=shadow, outline="")
+        c.create_polygon(tail(), smooth=True, fill=paper, outline=ink, width=2.5)
+        c.create_polygon(body(), fill=paper, outline=ink, width=2.5)
+        c.create_line(tx - 7, by1, tx + 5, by1, fill=paper, width=4)            # join tail to body
+        c.tag_raise(tid)
+
     def render(self):
         c = self.canvas
         c.delete("all")
@@ -1213,16 +1248,7 @@ class Buddy:
                 text = "".join(random.choice("#%&@*") if ch != " " and random.random() < 0.2
                                else ch for ch in text)
             hx, hy = self.head_pos()
-            tid = c.create_text(hx, hy - 10, text=text, fill="#2b1d14", anchor="s",
-                                width=self.W - 24, justify="center",
-                                font=("Segoe UI", 9, "bold"))
-            x0, y0, x1, y1 = c.bbox(tid)
-            shift = max(12 - x0, 0) + min(self.W - 12 - x1, 0)
-            c.move(tid, shift, 0)
-            x0, x1 = x0 + shift, x1 + shift
-            rid = c.create_rectangle(x0 - 6, y0 - 2, x1 + 6, y1 + 2,
-                                     fill="white", outline="#2b1d14", width=2)
-            c.tag_raise(tid, rid)
+            self.draw_bubble(c, text, hx, hy)
             self.bubble[1] -= 1
             if self.bubble[1] <= 0:
                 self.bubble = None
