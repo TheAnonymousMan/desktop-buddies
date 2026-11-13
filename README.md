@@ -13,7 +13,7 @@ I wrote exactly zero lines of this project.
 Please do not use this project to judge my programming skills. 
 All I wrote are the prompts. 
 I mostly just specify the structure of the code (to maintain modularity of the characters).
-And the relationship between the characters (my head cannon).
+And the relationship between the characters (my headcanon).
 ## Running it
 
 You need **Windows** and **Python 3** (the standard install from python.org
