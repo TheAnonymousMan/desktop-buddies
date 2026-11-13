@@ -1,0 +1,95 @@
+# What's fullscreen? How the buddies tell a show from a game from a meeting.
+#
+# Each line under a [section] is one clue:
+#   exe:   the program's file name                  exe: vlc.exe
+#   path:  part of the folder the program lives in  path: steamapps
+#   title: a word in the window's title             title: netflix
+#   class: the window's kind (tools/fullscreen_check.py prints it)
+# Matching ignores upper/lower case. Lines starting with # are ignored.
+#
+# Window titles are only checked against these words, right then and there.
+# They are never saved, logged or sent anywhere.
+#
+# [present]  hide completely and silently (slideshows, meetings)
+# [share]    hide completely whenever one of these windows is open anywhere,
+#            fullscreen or not (screen sharing)
+# [game]     the buddies sit and cheer you on
+# [video]    the buddies sit down with popcorn and keep quiet
+# Anything else fullscreen: they sit and watch from another screen.
+
+[present]
+class: screenClass
+class: PodiumParent
+exe: POWERPNT.EXE
+title: slide show
+title: slideshow
+title: presenter view
+title: present mode
+title: presenting
+exe: Zoom.exe
+exe: ms-teams.exe
+exe: Teams.exe
+exe: CiscoCollabHost.exe
+exe: webexmta.exe
+
+[share]
+# browsers' "... is sharing your screen" bar (Meet, Teams on the web, Discord...)
+title: is sharing your screen
+title: is sharing a window
+title: is sharing a tab
+title: is sharing this tab
+title: sharing your screen
+# Zoom / Teams / Webex share toolbars
+class: ZPFloatToolbarClass
+class: ZPContentViewWndClass
+title: sharing control bar
+title: you are screen sharing
+title: you're sharing
+
+[game]
+path: steamapps
+path: epic games
+path: gog galaxy
+path: gog games
+path: xboxgames
+path: riot games
+path: ea games
+path: ubisoft game launcher
+path: battle.net
+exe: javaw.exe
+title: minecraft
+class: UnityWndClass
+class: UnrealWindow
+class: SDL_app
+class: GLFW30
+
+[video]
+exe: vlc.exe
+exe: mpc-hc64.exe
+exe: mpc-hc.exe
+exe: mpc-be64.exe
+exe: PotPlayerMini64.exe
+exe: mpv.exe
+exe: wmplayer.exe
+exe: Video.UI.exe
+exe: Microsoft.Media.Player.exe
+exe: kodi.exe
+exe: plex.exe
+exe: Netflix.exe
+title: youtube
+title: netflix
+title: prime video
+title: disney+
+title: hulu
+title: crunchyroll
+title: twitch
+title: apple tv
+title: peacock
+title: paramount+
+title: vimeo
+title: jiohotstar
+title: hotstar
+title: plex
+title: jellyfin
+title: movie
+title: episode

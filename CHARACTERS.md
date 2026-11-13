@@ -52,7 +52,7 @@ Plain text you can edit. The main keys:
 | `climb_speed` | pixels per tick while climbing |
 | `can_climb` | `false` to stay on the floor |
 | `needs_food` | `false` if it never gets hungry |
-| `watch_pose` | `"loaf"` to lie down while watching you play fullscreen |
+| `watch_pose` | how it watches while you're fullscreen: `"loaf"` (sits down, the default) or `"stand"` |
 | `bubble_room` | extra space above the head for long speech bubbles |
 | `relationships` | how it feels about other buddies, by name, e.g. `{"Milo": "bestie"}` (see below) |
 | `lines` | everything it says (see below) |
@@ -66,6 +66,14 @@ come arrive bye break climb made_it drop moods hello hello_back play flee tag
 cuddle pet_other petted scanned bump oof hey scared fact_reply fs_flee watch_fs
 fs_back shaking dizzy after_shake dizzy_other`. A character's behaviours can
 use any other keys they like.
+
+**Fullscreen moments** also come in flavours for what you're doing:
+`fs_flee_video`, `watch_fs_video`, `fs_back_video` (a show or video: they sit
+with popcorn and whisper) and `fs_flee_game`, `watch_fs_game`, `fs_back_game`
+(a game: they jump up and cheer). Without them the plain `fs_flee` /
+`watch_fs` / `fs_back` lines are used. During a presentation or while you're
+sharing your screen, buddies hide and say nothing. How a fullscreen app is
+recognised lives in `fullscreen_context.txt` - add your own programs there.
 
 ## Relationships
 
@@ -245,12 +253,15 @@ def setup(buddy): ...                         # once per buddy; keep notes in bu
 def on_tick(buddy, world): ...                # every frame on the ground; return True to take over
 def on_pet(buddy): ...                        # return {"line", "hearts", "happy", "ticks"} to change petting
 def on_prop(buddy, prop): ...                 # a prop is nearby; return True if you act on it
-def on_event(buddy, event, other=None): ...   # "chatter", "dizzy", "dizzy_end", "fs_flee", "ate",
+def on_event(buddy, event, other=None): ...   # "chatter", "dizzy", "dizzy_end", "fs_flee", "fs_cheer", "ate",
                                             # "attention_elsewhere" (you petted `other`);
                                             # return True if you handled it
 def on_app_start(app, ch): ...              # once when the app starts (e.g. background downloads)
 def on_app_tick(app, ch): ...               # every 2 seconds
 ```
+
+`buddy.app.fs_kind` says what's fullscreen right now: `"video"`, `"game"`,
+`"present"`, `"other"`, or `None`.
 
 **Useful things on `buddy`:** `say(key, ticks)`, `set_state(name, ticks)`,
 `spawn("heart"|"zed"|"note"|"idea"|"star"|"scratch", n)`, `face(other)`,

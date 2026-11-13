@@ -39,7 +39,10 @@ Startup folder (Win + R, then `shell:startup`).
 
 They roam every monitor, climb up to stacked screens, chat, play tag, nap
 together and leave things lying around. When a game or video goes
-fullscreen, they move to another screen and watch.
+fullscreen, they move to another screen and sit down to watch: popcorn for
+shows, cheering for games. During presentations and screen sharing they hide
+completely. To teach them about your apps, edit `fullscreen_context.txt`
+(window titles are only matched against its keywords, never saved).
 
 ## The buddies
 

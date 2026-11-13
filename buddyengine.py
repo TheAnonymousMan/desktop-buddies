@@ -26,6 +26,7 @@ from ctypes import wintypes
 import json
 import os
 import math
+import re
 import random
 import threading
 import time
@@ -42,12 +43,16 @@ OLD_SETTINGS = HERE / "pet_settings.json"      # name from before the rename
 CHARACTERS_DIR = HERE / "characters"
 
 FX_COLORS = {"k": "#2b1d14", "r": "#e2445c", "z": "#7fb3ff",
-             "n": "#b56cff", "s": "#9a8f88", "y": "#ffd84a"}
+             "n": "#b56cff", "s": "#9a8f88", "y": "#ffd84a",
+             "w": "#fff8e7"}
 HEART = [".kk.kk.", "krrkrrk", "krrrrrk", ".krrrk.", "..krk..", "...k..."]
 ZED = ["zzzzz", "...z.", "..z..", ".z...", "zzzzz"]
 NOTE = ["..nn.", "..n.n", "..n..", "nnn..", "nnn.."]
 IDEA = [".kkk.", "kyyyk", "kyyyk", "kyyyk", ".kyk.", ".kkk.", ".kkk."]
 STAR = ["..y..", ".yyy.", "yyyyy", ".yyy.", ".y.y."]
+POPCORN = ["..y.w.y..", ".wywwywy.", "wywywwywy", "kkkkkkkkk", "kwrwrwrwk",
+           ".kwrwrwk.", ".kwrwrwk.", ".kwrwrwk.", ".kkkkkkk."]
+KERNEL = [".w.", "wyw", ".w."]
 SCRATCH = ["s..s..s..", ".s..s..s.", ".s..s..s.", "..s..s..s", "..s..s..s"]
 
 
@@ -333,6 +338,165 @@ def fullscreen_monitor(hwnd=None):
     return None
 
 
+# ------------------------------------------------- what's fullscreen? --
+CONTEXT_FILE = HERE / "fullscreen_context.txt"
+_context_rules = {"mtime": None, "rules": {}}
+
+
+def context_rules():
+    """The clues in fullscreen_context.txt, as {section: {kind: [words]}}.
+    Re-read whenever the file changes, so edits work without a restart."""
+    try:
+        mtime = CONTEXT_FILE.stat().st_mtime
+    except OSError:
+        return {}
+    if mtime != _context_rules["mtime"]:
+        rules, section = {}, None
+        for line in CONTEXT_FILE.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("[") and line.endswith("]"):
+                section = rules.setdefault(line[1:-1].strip().lower(), {})
+            elif section is not None and ":" in line:
+                kind, word = line.split(":", 1)
+                if word.strip():
+                    section.setdefault(kind.strip().lower(), []).append(word.strip().lower())
+        _context_rules.update(mtime=mtime, rules=rules)
+    return _context_rules["rules"]
+
+
+def _title_has(title, words):
+    """Whole-word match, so "max" doesn't match "maximum"."""
+    return any(re.search(r"(?<![a-z0-9])" + re.escape(w) + r"(?![a-z0-9])", title)
+               for w in words)
+
+
+def _window_facts(hwnd):
+    """(exe file name, exe folder, class) of a window, all lower case. The
+    title is fetched separately by the caller and never kept."""
+    user32, kernel32 = ctypes.WinDLL("user32"), ctypes.WinDLL("kernel32")
+    cls = ctypes.create_unicode_buffer(128)
+    user32.GetClassNameW(hwnd, cls, 128)
+    pid = wintypes.DWORD()
+    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    exe = ""
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    h = kernel32.OpenProcess(0x1000, False, pid.value)     # PROCESS_QUERY_LIMITED_INFORMATION
+    if h:
+        buf, size = ctypes.create_unicode_buffer(1024), wintypes.DWORD(1024)
+        if kernel32.QueryFullProcessImageNameW(h, 0, buf, ctypes.byref(size)):
+            exe = buf.value
+        kernel32.CloseHandle(h)
+    exe = exe.replace("/", "\\").lower()
+    folder, _, name = exe.rpartition("\\")
+    return name, folder, cls.value.lower()
+
+
+def _window_title(hwnd):
+    user32 = ctypes.WinDLL("user32")
+    buf = ctypes.create_unicode_buffer(512)
+    user32.GetWindowTextW(hwnd, buf, 512)
+    return buf.value.lower()
+
+
+def _matches(rules, section, name, folder, cls, title):
+    """Which kind of clue in `section` matches: "exe", "path", "class",
+    "title", or None."""
+    r = rules.get(section, {})
+    if name and name in r.get("exe", []):
+        return "exe"
+    if folder and any(p in folder for p in r.get("path", [])):
+        return "path"
+    if cls and cls in r.get("class", []):
+        return "class"
+    if title and _title_has(title, r.get("title", [])):
+        return "title"
+    return None
+
+
+def notification_state():
+    """Windows' own idea of what's going on: 3 = a fullscreen Direct3D game,
+    4 = presentation mode, 2 = something fullscreen, 5 = normal."""
+    try:
+        state = ctypes.c_int(0)
+        if ctypes.windll.shell32.SHQueryUserNotificationState(ctypes.byref(state)) == 0:
+            return state.value
+    except Exception:
+        pass
+    return 0
+
+
+def fullscreen_kind(hwnd=None):
+    """Sort the window in front into "present", "game", "video" or "other".
+    Only the kind comes back: the window's title is checked against the
+    keywords in fullscreen_context.txt and then thrown away."""
+    try:
+        if hwnd is None:
+            user32 = ctypes.WinDLL("user32")
+            user32.GetForegroundWindow.restype = wintypes.HWND
+            hwnd = user32.GetForegroundWindow()
+        if not hwnd:
+            return "other"
+        rules = context_rules()
+        name, folder, cls = _window_facts(hwnd)
+        title = _window_title(hwnd)
+        quns = notification_state()
+        try:
+            if quns == 4 or _matches(rules, "present", name, folder, cls, title):
+                return "present"                 # erring on the side of hiding
+            game = _matches(rules, "game", name, folder, cls, title)
+            if game and game != "title":         # installed as a game: trust it
+                return "game"
+            if _matches(rules, "video", name, folder, cls, title):
+                return "video"
+            if game or quns == 3:
+                return "game"
+            return "other"
+        finally:
+            title = None                         # (never kept)
+    except Exception:
+        return "other"
+
+
+def screen_sharing():
+    """True if a screen-sharing bar or toolbar ([share] in
+    fullscreen_context.txt) is open anywhere. Window titles are only compared
+    with the keywords, never kept."""
+    rules = context_rules().get("share", {})
+    if not rules:
+        return False
+    found = [False]
+    try:
+        user32 = ctypes.WinDLL("user32")
+        proc_t = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+        user32.EnumWindows.argtypes = [proc_t, wintypes.LPARAM]
+        user32.IsWindowVisible.argtypes = [wintypes.HWND]
+        user32.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+        user32.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+        classes, words = rules.get("class", []), rules.get("title", [])
+        me = os.getpid()
+
+        def callback(hwnd, data):
+            if not user32.IsWindowVisible(hwnd):
+                return True
+            pid = wintypes.DWORD()
+            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+            if pid.value == me:
+                return True
+            cls = ctypes.create_unicode_buffer(128)
+            user32.GetClassNameW(hwnd, cls, 128)
+            if cls.value.lower() in classes or (words and _title_has(_window_title(hwnd), words)):
+                found[0] = True
+                return False                     # stop looking
+            return True
+
+        user32.EnumWindows(proc_t(callback), 0)
+    except Exception:
+        pass
+    return found[0]
+
+
 def enable_dpi_awareness():
     """Use real pixel coordinates on every monitor. Without this, Windows fakes
     coordinates on scaled displays and side-by-side screens don't line up."""
@@ -417,6 +581,7 @@ class Buddy:
         self.last_attention = 0   # app tick when you last petted/fed/held this buddy
         self.watch_x = None       # where to stand and watch while you're fullscreen
         self.watch_face = 1
+        self.cheer = self.munch = self.glance = 0   # watching animations (ticks left)
         self.pending_watch = False
         self.on_arrive = None     # what to do after a walk_to() (set by behaviours)
         self.shake = 0            # how hard you've been shaking this buddy
@@ -474,6 +639,12 @@ class Buddy:
             b = spec["bob"]
             return b(self) if callable(b) else self.hop(b, 6)
         st = self.state
+        if st == "watch":
+            if self.cheer:
+                return self.hop(2.2, 6)             # jumping up and down
+            if self.munch:
+                return self.hop(0.35, 3.5)          # nom nom
+            return 0
         if st in ("chase", "flee", "race") or (st == "goto" and getattr(self, "goto_speed", 2.4) > 3):
             return self.hop(1.5, 6)                 # a bouncy trot when running
         if st in ("walk", "goto"):
@@ -541,7 +712,35 @@ class Buddy:
         self.flee_to = dest
         self.facing = 1 if (dest[0] + dest[2]) / 2 > self.cx() else -1
         self.set_state("fs_flee", 14)
-        self.say("fs_flee", 60)
+        self.say_kind("fs_flee", self.app.fs_kind, 60)
+
+    def watch_tick(self):
+        """Sitting nicely and watching your fullscreen app. With a video they
+        munch popcorn and keep quiet; with a game they jump up and cheer."""
+        kind = self.app.fs_kind
+        self.cheer, self.munch = max(0, self.cheer - 1), max(0, self.munch - 1)
+        self.glance = max(0, self.glance - 1)
+        self.facing = self.watch_face
+        if self.glance:                              # a quick look back at you
+            self.facing = 1 if self.pointer()[0] > self.cx() else -1
+        elif random.random() < 0.0012:
+            self.glance = random.randint(25, 45)
+        if kind == "video":
+            if not self.munch and random.random() < 0.012:   # a handful of popcorn
+                self.munch = 14
+                if random.random() < 0.4:
+                    self.spawn("kernel")
+            if random.random() < 0.0007:             # quiet: only now and then
+                self.say_kind("watch_fs", kind, 55)
+        elif kind == "game":
+            if not self.cheer and random.random() < 0.004:   # GO GO GO
+                self.cheer = random.randint(22, 34)
+                self.spawn("star", 2)
+                self.hook("on_event", "fs_cheer")
+                if random.random() < 0.45:
+                    self.say_kind("watch_fs", kind, 45)
+        elif random.random() < 0.0015:               # comment now and then (~every 30 s)
+            self.say("watch_fs", 60)
 
     def face(self, other):
         self.facing = 1 if other.cx() > self.cx() else -1
@@ -608,11 +807,23 @@ class Buddy:
                     .replace("{mins}", str(max(1, self.app.tick * TICK_MS // 60000))))
         self.bubble = [text, ticks]
 
+    def say_kind(self, key, kind, ticks=60):
+        """Say "<key>_<kind>" (e.g. watch_fs_video) if there are lines for it,
+        otherwise plain "<key>"."""
+        k = f"{key}_{kind}"
+        self.say(k if kind and (k in self.lines or k in DEFAULT_LINES) else key, ticks)
+
+    def sitting(self):
+        """Sitting down right now (napping, eating, or watching a fullscreen app)."""
+        return self.state in ("loaf", "sleep", "eat") or (
+            self.state == "watch" and not self.cheer
+            and self.ch.get("watch_pose", "loaf") == "loaf")
+
     def head_pos(self):
         hx, hy, hy_sit = self.ch["head"]
         s = self.scale
         x = hx if self.facing > 0 else self.spr_w - hx
-        y = hy_sit if self.state in ("loaf", "sleep", "eat") else hy
+        y = hy_sit if self.sitting() else hy
         return self.padx + x * s, self.padtop + y * s
 
     def spawn(self, kind, n=1):
@@ -1041,9 +1252,7 @@ class Buddy:
                 self.set_state("idle", 9999)             # reached the edge
             return
         elif st == "watch":
-            self.facing = self.watch_face
-            if random.random() < 0.0015:             # comment now and then (~every 30 s)
-                self.say("watch_fs", 60)
+            self.watch_tick()
             return
         elif st == "sleep":
             self.energy = min(100.0, self.energy + 0.3)
@@ -1141,8 +1350,12 @@ class Buddy:
         if st == "dizzy":
             return "blink" if (t // 7) % 2 else "stand"
         if st == "watch":
-            if self.ch.get("watch_pose") == "loaf":
-                return "loaf_blink" if blink else "loaf"
+            if self.cheer:                          # up on their feet, cheering
+                return "happy_b" if "happy_b" in spr and (t // 4) % 2 else "happy"
+            if self.ch.get("watch_pose", "loaf") == "loaf":
+                if self.munch and "loaf_b" in spr:
+                    return "loaf_b"
+                return "loaf_blink" if blink or self.munch > 8 else "loaf"
             return "blink" if blink else "stand"
         if st == "loaf":
             if blink:
@@ -1224,6 +1437,12 @@ class Buddy:
                 self.spr_w - self.ch["item_x"] - item.width() // s
             c.create_image(self.padx + ix * s, self.padtop + self.ch["item_y"] * s,
                            image=item, anchor="nw")
+
+        if self.state == "watch" and self.app.fs_kind == "video":   # a bucket of popcorn
+            pop = self.app.popcorn(s)
+            front = self.facing > 0
+            px = self.padx + (self.sw - 3 * s if front else 3 * s - pop.width())
+            c.create_image(px, self.padtop + self.sh - pop.height(), image=pop, anchor="nw")
 
         if self.state == "dizzy":                 # stars circling the head
             hx, hy = self.head_pos()
@@ -1777,6 +1996,8 @@ class App:
         self.idea = make_image(IDEA, 3, FX_COLORS)
         self.scratch = make_image(SCRATCH, 3, FX_COLORS)
         self.star = make_image(STAR, 3, FX_COLORS)
+        self.kernel = make_image(KERNEL, 3, FX_COLORS)      # popcorn, for spawn("kernel")
+        self._popcorn = {}
         for ch in CHARACTERS.values():       # characters' own powers (e.g. Milo's facts)
             fn = getattr(ch["behaviour"], "on_app_start", None)
             if fn:
@@ -1787,8 +2008,11 @@ class App:
         self.marks = []           # things left on the screen (claw marks), see leave_mark
         self.props = []           # objects in the world (balls, mugs...), see Prop
         self.fullscreen = None    # work area of the screen a fullscreen app is on
+        self.fs_kind = None       # what it is: "video", "game", "present" or "other"
         self._fs_seen = None
-        self.hidden = False       # buddies hidden: fullscreen and no other screen
+        self.no_room = False      # fullscreen and no other screen to go to
+        self.private = False      # presenting or sharing the screen
+        self.hidden = False       # buddies hidden (either of the two above)
         self.tick = 0
 
         cfg = load_settings()
@@ -1893,18 +2117,57 @@ class App:
             return
         if fs is not None and fs not in self.monitors:
             fs = None
-        if fs != self._fs_seen:
-            self._fs_seen = fs
+        kind = fullscreen_kind() if fs is not None else None
+        sharing = screen_sharing()
+        reading = (fs, kind, sharing)
+        if reading != self._fs_seen:
+            self._fs_seen = reading
             return
+        private = sharing or kind == "present"
         if fs != self.fullscreen:
             if self.fullscreen is not None:
                 self.leave_fullscreen()
             if fs is not None:
-                self.enter_fullscreen(fs)
+                self.enter_fullscreen(fs, kind)
+        elif fs is not None and kind != self.fs_kind:
+            if self.fs_kind == "present":           # slideshow over, still fullscreen
+                self.enter_fullscreen(fs, kind)
+            else:
+                self.fs_kind = kind                 # e.g. switched browser tab to a video
         elif fs is not None and not self.hidden:
             for p in self.buddies:                  # someone got dropped onto the game
                 if p.on_ground() and p.state != "fs_flee" and p.floor() == fs:
                     p.flee_fullscreen(self.watch_home(fs, p))
+        if private != self.private:
+            self.private = private
+            self.update_hidden()
+
+    def update_hidden(self):
+        """Hide every buddy (and its toys) while presenting or sharing the
+        screen, or when a fullscreen app leaves nowhere to go. Silently."""
+        want = self.private or self.no_room
+        if want == self.hidden:
+            return
+        self.hidden = want
+        if want:
+            for p in self.buddies:
+                p.drop_social()
+                p.bubble = None
+                p.win.withdraw()
+            for pr in self.props:
+                pr.win.withdraw()
+            return                                  # (marks clear themselves)
+        for p in self.buddies:
+            p.win.deiconify()
+            p.win.attributes("-topmost", True)
+            p._geo = None
+        for pr in self.props:
+            pr.win.deiconify()
+
+    def popcorn(self, s):
+        if s not in self._popcorn:
+            self._popcorn[s] = make_image(POPCORN, s, FX_COLORS)
+        return self._popcorn[s]
 
     def watch_home(self, fs, buddy):
         """The free screen a buddy should watch from: its own, or the nearest one."""
@@ -1914,16 +2177,14 @@ class App:
         fx, fy = (fs[0] + fs[2]) / 2, (fs[1] + fs[3]) / 2
         return min(free, key=lambda m: abs((m[0] + m[2]) / 2 - fx) + abs((m[1] + m[3]) / 2 - fy))
 
-    def enter_fullscreen(self, fs):
-        self.fullscreen = fs
+    def enter_fullscreen(self, fs, kind="other"):
+        self.fullscreen, self.fs_kind = fs, kind
         free = [m for m in self.monitors if m != fs]
         if not free:                              # nowhere to go: hide until it's over
-            self.hidden = True
-            for p in self.buddies:
-                p.drop_social()
-                p.win.withdraw()
-            for pr in self.props:
-                pr.win.withdraw()
+            self.no_room = True
+            self.update_hidden()
+            return
+        if kind == "present":                     # hidden anyway, see update_hidden
             return
         fx = (fs[0] + fs[2]) / 2
         groups = {}
@@ -1933,10 +2194,11 @@ class App:
         for home, buddies in groups.items():
             side = 1 if fx >= (home[0] + home[2]) / 2 else -1   # face the fullscreen screen
             x = home[2] - 30 if side > 0 else home[0] + 30      # line up along that edge
+            gap = 16 + (9 * 4 if kind == "video" else 0)        # room for the popcorn
             for p in buddies:
                 p.watch_face = side
                 p.watch_x = max(home[0], min(home[2] - p.sw, x - p.sw if side > 0 else x))
-                x += -side * (p.sw + 16)
+                x += -side * (p.sw + gap)
                 if p.state == "held":
                     continue
                 if p.floor() == fs:
@@ -1946,24 +2208,21 @@ class App:
                     p.set_state("idle", 1)          # walks over to its watch spot
 
     def leave_fullscreen(self):
-        self.fullscreen = None
-        if self.hidden:
-            self.hidden = False
-            for p in self.buddies:
-                p.win.deiconify()
-                p.win.attributes("-topmost", True)
-                p._geo = None
-            for pr in self.props:
-                pr.win.deiconify()
+        was = self.fs_kind
+        self.fullscreen = self.fs_kind = None
+        if self.no_room:
+            self.no_room = False
+            self.update_hidden()
         watchers = []
         for p in self.buddies:
             if p.watch_x is not None:
                 watchers.append(p)
             p.watch_x, p.pending_watch, p.flee_to = None, False, None
+            p.cheer = p.munch = p.glance = 0
             if p.state in ("watch", "goto", "fs_flee"):
                 p.set_state("idle", random.randint(20, 60))
-        if watchers:
-            random.choice(watchers).say("fs_back", 60)
+        if watchers and was != "present" and not self.hidden:
+            random.choice(watchers).say_kind("fs_back", was, 60)
 
     # ------------------------------------------------------------- marks --
     def leave_mark(self, img, x, y, life):
@@ -2201,7 +2460,7 @@ class App:
                     p.win.attributes("-topmost", True)
                 for pr in self.props:
                     pr.win.attributes("-topmost", True)
-            if self.tick % BREAK_EVERY == 0:
+            if self.tick % BREAK_EVERY == 0 and not self.hidden:
                 awake = [p for p in self.buddies if p.on_ground() and p.state != "sleep"]
                 if awake:
                     random.choice(awake).say("break", 120)
