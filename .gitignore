@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+
+# Your own setup - which buddies you had out
+buddy_settings.json
+pet_settings.json
+
+# Facts Milo has learned on this computer (rebuilt as he learns)
+characters/*/learned_facts.json
+
+# Editor / tool settings
+.claude/
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
