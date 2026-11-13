@@ -281,10 +281,11 @@ def monitors(root):
 OURS = object()   # "the foreground window is one of ours": keep the previous answer
 
 
-def fullscreen_monitor():
+def fullscreen_monitor(hwnd=None):
     """Work area of the monitor covered by a fullscreen foreground window (a game,
     a video, an F11 browser), None if there is none, or OURS if the foreground
-    window belongs to this app (e.g. our right-click menu)."""
+    window belongs to this app (e.g. our right-click menu). Pass hwnd to check a
+    particular window instead of the one in front."""
     try:
         user32 = ctypes.WinDLL("user32")
         user32.GetForegroundWindow.restype = wintypes.HWND
@@ -295,19 +296,20 @@ def fullscreen_monitor():
         user32.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
         user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
         user32.IsZoomed.argtypes = [wintypes.HWND]
-        hwnd = user32.GetForegroundWindow()
-        if not hwnd:
-            return None
-        pid = wintypes.DWORD()
-        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-        if pid.value == os.getpid():
-            return OURS
+        user32.GetWindowLongW.argtypes = [wintypes.HWND, ctypes.c_int]
+        user32.GetWindowLongW.restype = ctypes.c_long
+        if hwnd is None:
+            hwnd = user32.GetForegroundWindow()
+            if not hwnd:
+                return None
+            pid = wintypes.DWORD()
+            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+            if pid.value == os.getpid():
+                return OURS
         cls = ctypes.create_unicode_buffer(64)
         user32.GetClassNameW(hwnd, cls, 64)
         if cls.value in ("Progman", "WorkerW", "Shell_TrayWnd", "Shell_SecondaryTrayWnd"):
             return None                       # the desktop / taskbar
-        if user32.IsZoomed(hwnd):
-            return None                       # maximized isn't fullscreen
         r = wintypes.RECT()
         user32.GetWindowRect(hwnd, ctypes.byref(r))
         info = MONITORINFO()
@@ -315,9 +317,17 @@ def fullscreen_monitor():
         if not user32.GetMonitorInfoW(user32.MonitorFromWindow(hwnd, 2), ctypes.byref(info)):
             return None
         m = info.rcMonitor
-        if r.left <= m.left and r.top <= m.top and r.right >= m.right and r.bottom >= m.bottom:
-            w = info.rcWork
-            return (w.left, w.top, w.right, w.bottom)
+        if not (r.left <= m.left and r.top <= m.top and r.right >= m.right and r.bottom >= m.bottom):
+            return None                       # doesn't cover the whole screen
+        # A plain maximized window (with a title bar) can cover a screen that has
+        # no taskbar, so it doesn't count. But browsers playing fullscreen video
+        # and many games are "maximized" too, just without a title bar: those count.
+        WS_CAPTION = 0x00C00000
+        style = user32.GetWindowLongW(hwnd, -16)
+        if user32.IsZoomed(hwnd) and (style & WS_CAPTION) == WS_CAPTION:
+            return None
+        w = info.rcWork
+        return (w.left, w.top, w.right, w.bottom)
     except Exception:
         pass
     return None
