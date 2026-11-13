@@ -34,7 +34,56 @@ def start_play_ball(buddy):
     buddy.set_state("happy", 20)
 
 
-STATES = {"zoomies": {"weight": 8, "start": start_zoomies, "tick": tick_zoomies,
+# ----------------------------------------------------- sit nicely, beg --
+def start_sit(buddy):
+    """Sits nicely, like a good boy. Tail going."""
+    buddy.set_state("sit", random.randint(80, 160))
+    if random.random() < 0.3:
+        buddy.say("sit", 45)
+
+
+def sprite_sit(buddy):
+    if buddy.blinking():
+        return "sit_blink"
+    return "sit_b" if (buddy.tick // 4) % 2 else "sit"          # wag wag
+
+
+def beg_pose(buddy, ticks=120):
+    """Up on his haunches, paws going, puppy eyes."""
+    buddy.set_state("beg", ticks)
+
+
+def sprite_beg(buddy):
+    if buddy.blinking():
+        return "beg_blink"
+    return "beg1" if (buddy.tick // 6) % 2 == 0 else "beg2"
+
+
+def walk_to_you(buddy, then):
+    px, py = buddy.pointer()
+    if buddy.app.floor_at(px, py) != buddy.floor():
+        then(buddy)
+        return
+    lo, hi = buddy.limits(buddy.floor())
+    buddy.walk_to(max(lo, min(hi, px - buddy.sw / 2)), then=then, speed=4)
+
+
+def beg_you(buddy):
+    buddy.facing = 1 if buddy.pointer()[0] > buddy.cx() else -1
+    beg_pose(buddy, 160)
+    buddy.say("beg_you", 60)
+
+
+def beg_treat(buddy):
+    buddy.facing = 1 if buddy.pointer()[0] > buddy.cx() else -1
+    beg_pose(buddy, 160)
+    buddy.say("beg_treat", 60)
+
+
+STATES = {"sit": {"weight": 6, "start": start_sit, "sprite": sprite_sit},
+          "beg": {"weight": 0, "sprite": sprite_beg,
+                  "bob": lambda buddy: buddy.hop(0.8, 6)},          # paws going
+          "zoomies": {"weight": 8, "start": start_zoomies, "tick": tick_zoomies,
                       "sprite": sprite_zoomies,
                       "bob": lambda buddy: buddy.hop(2.5, 5)},     # big springy bounds
           "play_ball": {"weight": 4, "start": start_play_ball}}
@@ -134,9 +183,8 @@ def on_tick(buddy, world):
     if queue:
         friend = queue.pop(0)
         if friend == "you":                         # finally, beg the human
-            buddy.target = None
-            buddy.set_state("chase", 240)
-            buddy.say("beg_you", 60)
+            buddy.say("come", 40)
+            walk_to_you(buddy, beg_you)
             buddy.last_attention = buddy.app.tick - 600  # asks again in ~1 min
             return True
         if friend in buddy.app.buddies and friend.on_ground() and not friend.social \
@@ -144,6 +192,9 @@ def on_tick(buddy, world):
                 and friend.floor() == buddy.floor():
             buddy.start_scene("beg", friend)
             return True
+    elif buddy.hunger > 55 and random.random() < 0.002:  # treat? treat??
+        walk_to_you(buddy, beg_treat)
+        return True
     elif buddy.app.tick - buddy.last_attention > 1800:   # ignored for ~90 s
         friends = [q for q in buddy.app.buddies if q is not buddy and not q.leaving
                    and q.floor() == buddy.floor()]
@@ -177,7 +228,7 @@ def step_beg(scene):
         if a.state != "goto":
             a.face(b)
             b.face(a)
-            a.set_state("happy", 9999)               # wag wag wag
+            beg_pose(a, 9999)                        # sits up and begs
             scene.speak(a, "beg", 45)
             scene.phase, scene.mark = 1, scene.t
         elif scene.t > 400:
@@ -187,6 +238,7 @@ def step_beg(scene):
         scene.speak(b, "pet_other", 45)
         a.spawn("heart", 3)
     elif scene.t == scene.mark + 85:
+        a.set_state("happy", 9999)                   # wag wag wag
         scene.speak(a, "petted", 45)
         a.spawn("heart", 2)
     elif scene.t >= scene.mark + 120:

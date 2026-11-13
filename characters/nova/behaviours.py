@@ -55,7 +55,48 @@ def sprite_dance(buddy):
     return "dance1" if (buddy.tick // 6) % 2 else "dance2"
 
 
+# ------------------------------------------------------ wink, hum, sparkle --
+def start_wink(buddy):
+    buddy.facing = 1 if buddy.pointer()[0] > buddy.cx() else -1     # at you
+    buddy.set_state("wink", 50)
+    buddy.say("wink", 45)
+
+
+def tick_wink(buddy, world):
+    if buddy.timer == 30:
+        buddy.spawn("spark")
+
+
+def sprite_wink(buddy):
+    return "wink" if 12 < buddy.timer < 38 else "happy"
+
+
+def start_hum(buddy):
+    buddy.set_state("hum", random.randint(90, 150))
+    buddy.say("hum", 50)
+
+
+def tick_hum(buddy, world):
+    if buddy.tick % 16 == 0:
+        buddy.spawn("note")
+
+
+def sprite_hum(buddy):
+    return "hum1" if (buddy.tick // 10) % 2 == 0 else "hum2"
+
+
+def start_sparkle(buddy):
+    buddy.set_state("sparkle", 45)
+    buddy.say("sparkle", 45)
+    buddy.spawn("spark", 2)
+
+
 STATES = {
+    "wink": {"weight": 4, "start": start_wink, "tick": tick_wink, "sprite": sprite_wink},
+    "hum": {"weight": 6, "start": start_hum, "tick": tick_hum, "sprite": sprite_hum,
+            "bob": lambda buddy: buddy.hop(0.5, 10)},             # swaying to the tune
+    "sparkle": {"weight": 3, "start": start_sparkle, "sprite": lambda buddy: "stars",
+                "bob": lambda buddy: buddy.hop(1.5, 5)},          # bouncing with excitement
     # floats: not snapped to the floor; glow: her hover glow is drawn under her
     "hover": {"weight": 12, "start": start_hover, "tick": tick_hover, "sprite": sprite_hover,
               "floats": True, "glow": True},

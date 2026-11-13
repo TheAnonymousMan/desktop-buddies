@@ -63,6 +63,30 @@ NOVA_FACE = {
               "..SS..............SS",
               "...........kk.......",
               "...................."],
+    "wink":  ["......kkkk..........",
+              "......wEEe..........",
+              "......EEEe....kkkk..",
+              "......eiie..........",
+              "..SS..............SS",
+              "..SS.....k...k....SS",
+              "..........kkk.......",
+              "...................."],
+    "stars": [".......v.......v....",
+              "......vwv.....vwv...",
+              ".....vwwwv...vwwwv..",
+              "......vwv.....vwv...",
+              "..SS...v.......v..SS",
+              "..SS.....k...k....SS",
+              "..........kkk.......",
+              "...................."],
+    "hum":   ["....................",
+              "....................",
+              "......kkkk....kkkk..",
+              "....................",
+              "..SS..............SS",
+              "..SS..............SS",
+              "..........kk........",
+              "..........kk........"],
     "sleep": ["....................",
               "....................",
               "....................",
@@ -194,6 +218,10 @@ SPRITES = {
 SPRITES["stand_b"] = SPRITES["stand"]
 SPRITES["dance1"] = nova_stand("happy", legs=N_LEGS_B)
 SPRITES["dance2"] = nova_stand("open", legs=N_LEGS_A)
+SPRITES["wink"] = nova_stand("wink")
+SPRITES["stars"] = nova_stand("stars")
+SPRITES["hum1"] = nova_stand("hum")
+SPRITES["hum2"] = nova_stand("happy")
 
 EFFECTS = {
     "spark": up2(["..v..", ".vwv.", "vwwwv", ".vwv.", "..v.."]),

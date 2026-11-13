@@ -32,7 +32,34 @@ def sit_facing_away(buddy):
     buddy.say("sneak", 60)
 
 
+# ------------------------------------------------------------- sit, groom --
+def start_sit(buddy):
+    """Sits up neatly, tail curled, and flicks it now and then."""
+    buddy.set_state("sit", random.randint(90, 180))
+    if random.random() < 0.3:
+        buddy.say("sit", 45)
+
+
+def sprite_sit(buddy):
+    if buddy.blinking():
+        return "sit_blink"
+    return "sit_b" if (buddy.tick // 7) % 6 == 0 else "sit"     # tail flick
+
+
+def start_groom(buddy):
+    buddy.set_state("groom", random.randint(60, 100))
+    if random.random() < 0.5:
+        buddy.say("groom", 45)
+
+
+def sprite_groom(buddy):
+    return "groom1" if (buddy.tick // 6) % 2 == 0 else "groom2"    # lick, lick
+
+
 STATES = {
+    "sit": {"weight": 6, "start": start_sit, "sprite": sprite_sit},
+    "groom": {"weight": 5, "start": start_groom, "sprite": sprite_groom,
+              "bob": lambda buddy: buddy.hop(0.3, 6)},
     # climb_pose: drawn clinging to the screen edge, like when she climbs
     "scratch": {"weight": 7, "start": start_scratch, "tick": tick_scratch, "climb_pose": True},
     "sneak": {"weight": 7, "start": start_sneak},

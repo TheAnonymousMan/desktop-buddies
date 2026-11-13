@@ -8,7 +8,7 @@
  "extra_states": [],
  "climb_style": "claws",
  "climb_speed": 2.4,
- "watch_pose": "loaf",
+ "watch_pose": "sit",
  "lines": {
   "greet": ["Mochi. Don't get the wrong idea, I just live here.", "hmph. you're back. I wasn't waiting or anything.", "it's me. try to contain yourself."],
   "pet": ["h-hey! who said you could pet me?!", "hmph. ...fine. just this once.", "it's not like I wanted pets or anything!", "*purrs* th-that's not a purr!", "...fine. but only because my fur needs smoothing.", "wh-who taught you to pet like that?!", "I'll allow it. once. maybe twice."],
@@ -41,6 +41,8 @@
   "watch_fs_game": ["you missed. obviously.", "...that was a good move. I didn't say anything.", "*tail swish* go! ...I mean, whatever.", "hmph. not bad."],
   "fs_back_video": ["it was okay. I didn't cry. you cried.", "...is there a sequel. asking for no reason."],
   "fs_back_game": ["you won? ...I knew you would. I mean, lucky."],
+  "sit": ["*sits primly*", "I'm sitting here because I want to. not for you.", "*tail curls around paws*"],
+  "groom": ["*lick lick* ...don't watch.", "*grooms* perfection takes work.", "*licks paw* what? I'm busy."],
   "shaking": ["NYAAA! STOP!", "h-hey! I'm not a snow globe!", "BAKA! BAKA! BAKA!"],
   "dizzy": ["@_@ ...the room is spinning", "*wobbles* i-it's not funny!", "the room... is doing a little spin... hmph.", "*wobbles* this is your fault."],
   "dizzy_other_dislikes": ["hmph. serves you right, {other}."],

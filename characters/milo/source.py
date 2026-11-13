@@ -82,7 +82,7 @@ MILO_FACES = {
 }
 
 
-def milo_top(face="open", book=False):
+def milo_top(face="open", book=False, mug=False):
     brow = eye1 = eye2 = mouth = _S10          # face is drawn in detail later
     rows = [
         ".....kk..kk",
@@ -100,7 +100,13 @@ def milo_top(face="open", book=False):
         "....kLwbbwLk",                  # lab coat collar + bow tie
         "...kLLwbbwLLk",
     ]
-    if book:                             # holding an open book
+    if mug:                              # both hands round his coffee mug
+        rows += ["..kLkvkCCCkvLk",       # coffee on top (his red mug)
+                 "..kLksBBBBsLLk",       # hands either side
+                 "..kLkvkBBBkvLk"]
+    elif book == "turn":                 # turning a page
+        rows += ["..kLBPPkPPPBLk", "..kLBPPkPPkBLk", "..ksBBBBBBBBsk"]
+    elif book:                           # holding an open book
         rows += ["..kLBPPkkPPBLk", "..kLBPPkkPPBLk", "..ksBBBBBBBBsk"]
     else:                                # open lab coat over the mint vest
         rows += ["..kLkLvvvvbkLk",       # red pen in the coat pocket
@@ -216,6 +222,14 @@ def milo_stand(face="open", legs=N_LEGS_A):
     return milo_hd(milo_top() + legs, 0, face)
 
 
+def milo_read(face="blink", turn=False):
+    return milo_hd(milo_top(book="turn" if turn else True) + N_LEGS_A, 0, face)
+
+
+def milo_sip(face="blink"):
+    return milo_hd(milo_top(mug=True) + N_LEGS_A, 0, face)
+
+
 def milo_sit(face="open"):
     return milo_hd(["", "", ""] + milo_top(book=True) + ["....kffk.kffk"], 3, face)
 
@@ -273,8 +287,18 @@ SPRITES = {
     "loaf_blink": milo_sit("blink"),
     "sleep": milo_sit("blink"),         # dozed off reading
     "sleep_b": milo_sit("blink"),
+    # his own moves (behaviours.py)
+    "read1": milo_read(),
+    "read2": milo_read(turn=True),
+    "read_look": milo_read("open"),
+    "sip": milo_sip(),
+    "sip_happy": milo_sip("happy"),
 }
 
 PROPS = {
     "mug": thin(up2(coffee(3))),        # his empty coffee mug
+}
+# Effects float up and vanish, like hearts (buddy.spawn("steam")).
+EFFECTS = {
+    "steam": up2([".D.", "D..", ".D.", "..D", ".D."]),     # from his coffee
 }

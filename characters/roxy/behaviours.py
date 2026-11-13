@@ -110,7 +110,19 @@ def sprite_peek(buddy):
     return "peek"
 
 
+# -------------------------------------------------------------- hair flip --
+def start_flip(buddy):
+    buddy.set_state("flip", 36)
+    buddy.say("flip", 45)
+
+
+def sprite_flip(buddy):
+    return "flip" if 8 < buddy.timer < 28 else "stand"
+
+
 STATES = {
+    "flip": {"weight": 5, "start": start_flip, "sprite": sprite_flip,
+             "bob": lambda buddy: buddy.hop(1.2, 20) if 8 < buddy.timer < 28 else 0},
     "skate": {"weight": 10, "start": start_skate, "tick": tick_skate, "sprite": sprite_skate,
               "bob": bob_skate},                         # ollies
     "gum": {"weight": 8, "start": start_gum, "tick": tick_gum, "sprite": sprite_gum},

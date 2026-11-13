@@ -68,6 +68,47 @@ def biscuit_lie(tail="a", eyes=True):
     return biscuit_body(tail, eyes, 1, lo)
 
 
+HEAD = [pad(r, 22) for r in BISCUIT_BODY[:7]]      # (the same head, sitting up)
+SIT_BODY = [
+    "...........kooooowwk..",       # chest
+    "..........koooooowwk..",
+    ".........koooooooowk..",
+    "........koodooookok...",       # front leg
+    ".......kooooodookok...",
+    "......kooooooookkok...",
+    "......kkkkkkkkkkkkkk..",       # paws
+]
+BEG_BODY = [                        # up on his haunches, paws held up
+    "...........kooooowwkok",       # paws
+    "..........koooooowwkkk",
+    ".........koooooooowk..",
+    "........koodoooooowk..",
+    ".......koooooodoowk...",
+    "......koooooooooook...",
+    "......kkkkkkkkkkkkk...",
+]
+BEG_PAWS_UP = ["...........kooooowwkok", "..........koooooowwkkk"]
+BEG_PAWS_LOW = ["...........kooooowwk..", "..........koooooowwkok", ".........koooooooowkkk"]
+SIT_TAILS = {   # tail on the floor (a) / up and wagging (b), over the start of the bottom rows
+    "a": {5: "..kkkk", 6: ".koooo"},
+    "b": {1: "....kk", 2: "...kodk", 3: "....kook", 4: "......ko"},
+}
+
+
+def sitting(body, tail="a", eyes=True):
+    rows = HEAD + [pad(r, 22) for r in body]
+    for i, piece in SIT_TAILS[tail].items():
+        r = 7 + i
+        rows[r] = "".join(p if p != "." else o for p, o in zip(piece, rows[r][:len(piece)])) \
+            + rows[r][len(piece):]
+    return detail(rows, BISCUIT_RAMP, BISCUIT_EYES[eyes], (33, 5))
+
+
+def biscuit_beg(tail="a", eyes=True, low=False):
+    body = (BEG_PAWS_LOW + BEG_BODY[3:]) if low else BEG_BODY
+    return sitting(body, tail, eyes)
+
+
 def bone(level):
     rows = ["kk....kk", "kwwwwwwk", "kk....kk"]
     bite = min(8, level * 2)
@@ -90,6 +131,13 @@ SPRITES = {
     "loaf_blink": biscuit_lie(eyes=False),
     "sleep": biscuit_lie(eyes=False),
     "sleep_b": biscuit_lie(tail="b", eyes=False),
+    # sitting nicely, and begging (behaviours.py)
+    "sit": sitting(SIT_BODY),
+    "sit_b": sitting(SIT_BODY, tail="b"),
+    "sit_blink": sitting(SIT_BODY, eyes=False),
+    "beg1": biscuit_beg(),
+    "beg2": biscuit_beg(tail="b", low=True),
+    "beg_blink": biscuit_beg(eyes=False),
 }
 
 # Props are real objects in the world (buddy.drop_prop("ball")).

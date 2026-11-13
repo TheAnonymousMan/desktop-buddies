@@ -117,6 +117,51 @@ def mochi_loaf(tail="a", eyes=True):
     return mochi_hd(lo, 1, eyes)
 
 
+MOCHI_SIT = [                    # sitting up, rows 7-13 (normal size)
+    "...........kooowwwwk..",
+    "..........kodooowwwk..",
+    ".........koodoooowwk..",
+    "........koodoodookok..",
+    ".......koodoodooookok.",
+    "......koooooooookkok..",
+    "......kkkkkkkkkkkkkk..",
+]
+MOCHI_GROOM = [                  # front leg lifted (the paw is drawn in detail)
+    "...........kooowwwwk..",
+    "..........kodooowwwk..",
+    ".........koodoooowwk..",
+    "........koodoodooowk..",
+    ".......koodoodoooook..",
+    "......kooooooooookok..",
+    "......kkkkkkkkkkkkkk..",
+]
+SIT_TAILS = {   # tail curled up behind her (a), and flicking (b)
+    "a": {1: "...k", 2: "..kok", 3: "..kok", 4: "...kok", 5: "....kok"},
+    "b": {1: ".kk.", 2: "kook", 3: ".kok", 4: "...kok", 5: "....kok"},
+}
+
+
+def mochi_sit(body=MOCHI_SIT, tail="a", eyes=True, blush=False):
+    head = ["." * 12 + r[12:] for r in mochi_lo()[:7]]
+    lo = head + [pad(r, 22) for r in body]
+    for i, piece in SIT_TAILS[tail].items():
+        r = 7 + i                                    # (a row of the sitting body)
+        row = lo[r]
+        lo[r] = "".join(p if p != "." else o for p, o in zip(piece, row)) + row[len(piece):]
+    return mochi_hd(lo, 0, eyes, blush)
+
+
+PAW = [".kkk.", "kOook", "kooow", "kqoqk", ".kkk."]     # (double detail)
+
+
+def mochi_groom(low=False):
+    """Licking her paw: it's held up by her mouth, then dips (low)."""
+    rows = mochi_sit(MOCHI_GROOM, eyes=False)
+    if not low:
+        rows = stamp(rows, 35, 13, ["n"])                    # little pink tongue
+    return stamp(rows, 36, 14 if not low else 17, PAW)
+
+
 PALETTE = MOCHI_COLORS
 item = lambda level: [".dddddddd.", "kbbbbbbbbk", ".kbbbbbbk.", "..kkkkkk.."]          # what it eats, at 6 levels of eaten
 
@@ -135,6 +180,12 @@ SPRITES = {
     "sleep_b": mochi_loaf(tail="b", eyes=False),
     "climb1": rotate_ccw(mochi_stand(legs=M_LEGS_A)),
     "climb2": rotate_ccw(mochi_stand(tail="b", legs=M_LEGS_B)),
+    # her own moves (behaviours.py)
+    "sit": mochi_sit(),
+    "sit_b": mochi_sit(tail="b"),
+    "sit_blink": mochi_sit(eyes=False),
+    "groom1": mochi_groom(),
+    "groom2": mochi_groom(low=True),
 }
 
 # Marks stay put on the screen and fade (buddy.leave_mark("scratch")).

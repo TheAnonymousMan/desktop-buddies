@@ -124,17 +124,18 @@ def bubble(r):
 # High side ponytail, drawn behind her head: tied at the top right and swept
 # out and down. (root x, root y, tip x, tip y, width) in double-detail pixels.
 PONYTAIL = strands(40, 40, [(29, 3, 38, 24, 13), (30, 6, 35, 33, 10), (28, 2, 39, 12, 9)])
+PONYTAIL_FLIP = strands(40, 40, [(29, 3, 39, 8, 13), (30, 6, 39, 18, 10), (28, 2, 37, 0, 9)])
 TIE = ["mm", "mm", "mm"]            # hair tie
 
 
-def with_hair(rows, dy=0):
+def with_hair(rows, dy=0, flip=False):
     """Put the ponytail behind a double-detail sprite (dy: rows lower)."""
-    tail = ["." * 40] * dy + PONYTAIL
+    tail = ["." * 40] * dy + (PONYTAIL_FLIP if flip else PONYTAIL)
     return stamp(behind(rows, tail), 27, 1 + dy, TIE)
 
 
-def roxy(face="cool", legs=LEGS_A, gum=0):
-    rows = with_hair(detail(roxy_top() + legs, ROXY_RAMP, FACES[face], (6, 14)))
+def roxy(face="cool", legs=LEGS_A, gum=0, flip=False):
+    rows = with_hair(detail(roxy_top() + legs, ROXY_RAMP, FACES[face], (6, 14)), flip=flip)
     if gum:                                   # mouth is around x 16, y 20
         b = bubble(gum)
         rows = stamp(rows, 16 - gum, 20 - gum, b)
@@ -187,6 +188,7 @@ SPRITES = {
     "gum3": roxy("cool", gum=6),
     "vibe1": roxy("chill"),
     "vibe2": roxy("grin", legs=LEGS_B),
+    "flip": roxy("grin", flip=True),
 }
 
 PROPS = {

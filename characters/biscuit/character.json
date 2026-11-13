@@ -7,7 +7,7 @@
  "feed_label": "Give Biscuit a treat",
  "extra_states": [],
  "can_climb": false,
- "watch_pose": "loaf",
+ "watch_pose": "sit",
  "relationships": {"*": "bestie"},
  "bubble_room": 84,
  "lines": {
@@ -55,6 +55,8 @@
   "watch_fs_game": ["WOOF! GO GO GO!", "YOU'RE THE BEST!!", "*bouncing* YAY!", "*wag wag wag* YES!"],
   "fs_back_video": ["Did the dog live?! Tell me the dog lived!", "That was the BEST movie!"],
   "fs_back_game": ["YOU DID IT!! I think! YAY!", "*zoomies* You were so cool!"],
+  "sit": ["*sits nicely* Good boy? Good boy!", "*sits* I'm being SO good right now.", "*sits and wags*"],
+  "beg_treat": ["Treat? Treat?? TREAT?!", "*sits up and begs* I'd do anything for a treat!", "*puppy eyes* Just one bone? Please?"],
   "shaking": ["WHEEEEE!!!", "*happy screaming*", "FASTER!!!"],
   "dizzy": ["*wobbles* hehe the floor is moving", "@_@ *wag wag*", "*wobbly wags*", "Whoa... two cursors... TWICE the fun!"],
   "after_shake": ["AGAIN! AGAIN!", "That was the BEST!", "AGAIN! THAT WAS AMAZING!", "Wheee! More please!"],

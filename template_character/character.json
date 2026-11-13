@@ -17,7 +17,7 @@
  "can_climb": true,
  "needs_food": true,
  "watch_pose": "loaf",
- "_watch_pose": "loaf (sit, the default) or stand: how it watches while you are in a fullscreen app",
+ "_watch_pose": "loaf (the default), stand, or any sprite of its own (e.g. sit): how it watches while you are in a fullscreen app",
  "relationships": {},
  "_relationships": "how it feels about other pets by name, e.g. {\"Mochi\": \"bestie\", \"Echo\": \"dislikes\"}. Kinds: loves, bestie, friend, dislikes. Anyone not listed is a friend.",
  "lines": {

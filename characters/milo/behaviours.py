@@ -66,7 +66,42 @@ def sprite_fact(buddy):
     return "fact" if (buddy.tick // 10) % 3 else "stand"
 
 
-STATES = {"fact": {"weight": 0, "sprite": sprite_fact}}
+# ------------------------------------------------------------ read, sip --
+def start_read(buddy):
+    buddy.set_state("read", random.randint(130, 220))
+    buddy.say("read", 45)
+
+
+def tick_read(buddy, world):
+    if buddy.timer == 40 and random.random() < 0.5:   # found something interesting
+        buddy.spawn("idea")
+        buddy.say("read_wow", 55)
+
+
+def sprite_read(buddy):
+    if buddy.timer < 40 and buddy.timer > 10 and buddy.bubble:
+        return "read_look"
+    return "read2" if buddy.tick % 45 < 6 else "read1"       # turning a page
+
+
+def start_sip(buddy):
+    buddy.set_state("sip", random.randint(60, 90))
+
+
+def tick_sip(buddy, world):
+    if buddy.tick % 14 == 0 and buddy.timer > 20:
+        buddy.spawn("steam")
+    if buddy.timer == 20:
+        buddy.say("sip", 45)
+
+
+def sprite_sip(buddy):
+    return "sip_happy" if buddy.timer <= 20 else "sip"
+
+
+STATES = {"fact": {"weight": 0, "sprite": sprite_fact},
+          "read": {"weight": 7, "start": start_read, "tick": tick_read, "sprite": sprite_read},
+          "sip": {"weight": 6, "start": start_sip, "tick": tick_sip, "sprite": sprite_sip}}
 
 
 def on_event(buddy, event, other=None):

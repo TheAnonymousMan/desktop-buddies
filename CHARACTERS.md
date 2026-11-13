@@ -52,7 +52,7 @@ Plain text you can edit. The main keys:
 | `climb_speed` | pixels per tick while climbing |
 | `can_climb` | `false` to stay on the floor |
 | `needs_food` | `false` if it never gets hungry |
-| `watch_pose` | how it watches while you're fullscreen: `"loaf"` (sits down, the default) or `"stand"` |
+| `watch_pose` | how it watches while you're fullscreen: `"loaf"` (the default), `"stand"`, or any sprite of its own like `"sit"` (it also uses `sit_blink` and `sit_b` if they exist) |
 | `bubble_room` | extra space above the head for long speech bubbles |
 | `relationships` | how it feels about other buddies, by name, e.g. `{"Milo": "bestie"}` (see below) |
 | `lines` | everything it says (see below) |

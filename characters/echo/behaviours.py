@@ -16,8 +16,45 @@ def sprite_jealous(buddy):
     return "jealous"
 
 
+def start_heartbeat(buddy):
+    """Her whole screen becomes a beating heart. For you."""
+    buddy.facing = 1 if buddy.pointer()[0] > buddy.cx() else -1
+    buddy.set_state("heartbeat", random.randint(70, 110))
+    buddy.say("heartbeat", 50)
+
+
+def tick_heartbeat(buddy, world):
+    if buddy.tick % 24 == 0:
+        buddy.spawn("heart")
+
+
+def sprite_heartbeat(buddy):
+    return "heart" if buddy.tick % 24 in (0, 1, 2, 3, 7, 8, 9) else "heart_s"   # ba-dum
+
+
+def start_buffer(buddy):
+    """Loading... loading... (thinking about you)."""
+    buddy.set_state("buffer", 80)
+    buddy.say("buffer", 40)
+
+
+def tick_buffer(buddy, world):
+    if buddy.timer == 20:
+        buddy.say("buffer_done", 50)
+        buddy.spawn("heart", 2)
+
+
+def sprite_buffer(buddy):
+    if buddy.timer <= 20:
+        return "happy"
+    return ("load1", "load2", "load3")[(buddy.tick // 6) % 3]
+
+
 STATES = {
     "stare": {"weight": 10, "start": start_stare},
+    "heartbeat": {"weight": 5, "start": start_heartbeat, "tick": tick_heartbeat,
+                  "sprite": sprite_heartbeat},
+    "buffer": {"weight": 4, "start": start_buffer, "tick": tick_buffer, "sprite": sprite_buffer},
     "jealous": {"weight": 0, "sprite": sprite_jealous},     # only during a jealous scene
 }
 

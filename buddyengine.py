@@ -582,6 +582,7 @@ class Buddy:
         self.watch_x = None       # where to stand and watch while you're fullscreen
         self.watch_face = 1
         self.cheer = self.munch = self.glance = 0   # watching animations (ticks left)
+        self.breath_phase = random.randint(0, 45)   # so they don't all breathe in sync
         self.pending_watch = False
         self.on_arrive = None     # what to do after a walk_to() (set by behaviours)
         self.shake = 0            # how hard you've been shaking this buddy
@@ -630,6 +631,14 @@ class Buddy:
         `period` frames, in screen pixels."""
         return abs(math.sin(self.tick * math.pi / period)) * height * self.scale
 
+    def breath(self):
+        """Breathing: a slow one-pixel rise and fall while standing about."""
+        if self.custom_state() is not None and self.custom_state().get("floats"):
+            return 0
+        period = 46 if self.state == "sleep" else 30
+        up = max(1, self.scale // 3)
+        return up if (self.tick + self.breath_phase) % period < period // 2 else 0
+
     def lift(self):
         """How far above its real position the buddy is drawn right now, so it
         bounces along without changing where it actually is. A move in
@@ -644,7 +653,11 @@ class Buddy:
                 return self.hop(2.2, 6)             # jumping up and down
             if self.munch:
                 return self.hop(0.35, 3.5)          # nom nom
-            return 0
+            return self.breath()
+        if st == "happy":
+            return self.hop(1, 5)                   # a happy little bounce
+        if st in ("idle", "loaf", "sleep"):
+            return self.breath()
         if st in ("chase", "flee", "race") or (st == "goto" and getattr(self, "goto_speed", 2.4) > 3):
             return self.hop(1.5, 6)                 # a bouncy trot when running
         if st in ("walk", "goto"):
@@ -1352,11 +1365,14 @@ class Buddy:
         if st == "watch":
             if self.cheer:                          # up on their feet, cheering
                 return "happy_b" if "happy_b" in spr and (t // 4) % 2 else "happy"
-            if self.ch.get("watch_pose", "loaf") == "loaf":
-                if self.munch and "loaf_b" in spr:
-                    return "loaf_b"
-                return "loaf_blink" if blink or self.munch > 8 else "loaf"
-            return "blink" if blink else "stand"
+            pose = self.ch.get("watch_pose", "loaf")     # any pose: X, X_blink, X_b
+            if pose == "stand" or pose not in spr:
+                return "blink" if blink else "stand"
+            if self.munch and f"{pose}_b" in spr:
+                return f"{pose}_b"
+            if (blink or self.munch > 8) and f"{pose}_blink" in spr:
+                return f"{pose}_blink"
+            return pose
         if st == "loaf":
             if blink:
                 return "loaf_blink"
